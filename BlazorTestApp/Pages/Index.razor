@@ -11,20 +11,46 @@
 
 <InputFile OnChange="@ImportExcelFile"/>
 
-@if (errors.Count > 0)
+@if (quotes is not null)
 {
-	<h2>Errors</h2>
-	<u1 class="text-danger">
-		@foreach (var error in errors)
-		{
-			<li>@error</li>
-		}
-	</u1>
+	<h2>Existing Quotes</h2>
+	<table class="table table bordered">]
+		<thead>
+			<tr>
+				<th>Quote Sent Date</th>
+				<th>Sales Person</th>
+				<th>Project Name</th>
+				<th>Project Code</th>
+				<th>Customer</th>
+				<th>Customer City</th>
+				<th>Customer State</th>
+				<th>Marketing Category</th>
+				<th>Number of Quotes</th>
+				<th>Total Net</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var q in quotes)
+			{
+				<tr>
+					<td>@q.QuoteSentDate</td>
+					<td>@q.SalesRep</td>
+					<td>@q.ProjectName</td>
+					<td>@q.ProjectCode</td>
+					<td>@q.Customer</td>
+					<td>@q.CustomerCity</td>
+					<td>@q.CustomerState</td>
+					<td>@q.MarketingCategory</td>
+					<td>@q.NumberOfQuotes</td>
+					<td>@q.TotalNetQuote</td>
+				</tr>
+			}
+		</tbody>
+	</table>
 }
 
 @code 
 {
-	private List<string> errors = new();
 	private QuoteModel newQuote = new();
 
 	private async Task ImportExcelFile(InputFileChangeEventArgs e)
@@ -71,11 +97,24 @@
 						}
 					}
 				}
+				await LoadQuotes();
 			}
 			catch (Exception ex)
 			{
 				throw ex;
 			}
 		}
+	}
+
+	private List<QuoteModel>? quotes;
+
+	private async Task LoadQuotes()
+	{
+		quotes = await sql.LoadData<QuoteModel>("test.dbo.getAllData", "Default", null);
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadQuotes();
 	}
 }
