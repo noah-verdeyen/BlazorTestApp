@@ -1,0 +1,81 @@
+﻿@page "/"
+@using MyLibrary;
+@using BlazorTestApp.Data;
+@using OfficeOpenXml
+@inject IConfiguration config
+@inject ISqlDataAccess sql
+
+<PageTitle>Upload Data App</PageTitle>
+
+<h1>Upload Data</h1>
+
+<InputFile OnChange="@ImportExcelFile"/>
+
+@if (errors.Count > 0)
+{
+	<h2>Errors</h2>
+	<u1 class="text-danger">
+		@foreach (var error in errors)
+		{
+			<li>@error</li>
+		}
+	</u1>
+}
+
+@code 
+{
+	private List<string> errors = new();
+	private QuoteModel newQuote = new();
+
+	private async Task ImportExcelFile(InputFileChangeEventArgs e)
+	{
+		foreach (var file in e.GetMultipleFiles(1))
+		{
+			try
+			{
+				using (MemoryStream ms = new MemoryStream())
+				{
+					// copy data from file to memory stream
+					await file.OpenReadStream().CopyToAsync(ms);
+					// positions the cursor at the beginning of the memory stream
+					ms.Position = 0;
+
+					// create ExcelPackage from memory stream
+					ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+					using (ExcelPackage package = new ExcelPackage(ms))
+					{
+						ExcelWorksheet ws = package.Workbook.Worksheets.FirstOrDefault();
+						int colCount = ws.Dimension.End.Column;
+						int rowCount = ws.Dimension.End.Row;
+
+						int i = 2;
+						while (i <= rowCount)
+						{
+							newQuote.QuoteSentDate = (DateTime)ws.Cells[i, 1].Value;
+							newQuote.SalesRep = ws.Cells[i, 2].Value?.ToString();
+							newQuote.ProjectName = ws.Cells[i, 3].Value?.ToString();
+							newQuote.ProjectCode = ws.Cells[i, 4].Value?.ToString();
+							newQuote.Customer = ws.Cells[i, 5].Value?.ToString();
+							newQuote.CustomerCity = ws.Cells[i, 6].Value?.ToString();
+							newQuote.CustomerState = ws.Cells[i, 7].Value?.ToString();
+							newQuote.MarketingCategory = ws.Cells[i, 8].Value?.ToString();
+							newQuote.NumberOfQuotes = (double)ws.Cells[i, 9].Value;
+							newQuote.TotalNetQuote = (double)ws.Cells[i, 10].Value;
+							++i;
+
+							if (newQuote.MarketingCategory is null) newQuote.MarketingCategory = "N/A";
+
+							await sql.SaveData("test.dbo.uploadProcedure", "Default", newQuote);
+
+							newQuote = new();
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				throw ex;
+			}
+		}
+	}
+}
